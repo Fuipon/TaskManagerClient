@@ -1,0 +1,86 @@
+﻿@using TaskManagerClient.Services;
+@using TaskManagerClient.Models;
+@page "/tasks"
+@inject ApiService ApiService
+
+<h2 class="mb-3 ms-3">Мои задачи</h2>
+
+<div class="mb-4">
+    <input @bind="newTask.Title" placeholder="Название задачи" class="form-control mb-2" />
+    <textarea @bind="newTask.Description" placeholder="Описание (необязательно)" class="form-control mb-2"></textarea>
+    <button class="btn btn-primary ms-3" @onclick="AddTask">Добавить задачу</button>
+</div>
+
+@if (tasks == null)
+{
+    <p><em>Загрузка...</em></p>
+}
+else if (tasks.Count == 0)
+{
+    <p><em>Нет задач</em></p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var task in tasks)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <input type="checkbox"
+                           class="form-check-input me-2"
+                           checked="@task.IsCompleted"
+                           @onchange="(e) => OnCompletedChanged(e, task)" />
+                    <strong>@task.Title</strong>
+                    <div class="text-muted">@task.Description</div>
+                </div>
+                <button class="btn btn-danger btn-sm" @onclick="() => DeleteTask(task.Id)">Удалить</button>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<TaskItemDTO>? tasks;
+    private TaskItemDTO newTask = new();
+
+    private async Task OnCompletedChanged(ChangeEventArgs e, TaskItemDTO task)
+    {
+        task.IsCompleted = (bool)e.Value;
+        await UpdateTask(task);
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTasks();
+    }
+
+    private async Task LoadTasks()
+    {
+        tasks = await ApiService.GetTasksAsync();
+    }
+
+    private async Task AddTask()
+    {
+        if (!string.IsNullOrWhiteSpace(newTask.Title))
+        {
+            await ApiService.AddTaskAsync(newTask);
+            newTask = new TaskItemDTO();
+            await LoadTasks();
+        }
+    }
+
+    private async Task UpdateTask(TaskItemDTO task)
+    {
+        await ApiService.UpdateTaskAsync(task);
+        await LoadTasks();
+    }
+
+    private async Task DeleteTask(int id)
+    {
+        await ApiService.DeleteTaskAsync(id);
+        await LoadTasks();
+    }
+}
+
+
