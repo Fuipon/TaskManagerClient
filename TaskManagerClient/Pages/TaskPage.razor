@@ -1,15 +1,30 @@
-﻿@using TaskManagerClient.Services;
+﻿@using Microsoft.AspNetCore.Components.Forms
+@using TaskManagerClient.Services;
 @using TaskManagerClient.Models;
 @page "/tasks"
 @inject ApiService ApiService
 
 <h2 class="mb-3 ms-3">Мои задачи</h2>
 
-<div class="mb-4">
-    <input @bind="newTask.Title" placeholder="Название задачи" class="form-control mb-2" />
-    <textarea @bind="newTask.Description" placeholder="Описание (необязательно)" class="form-control mb-2"></textarea>
-    <button class="btn btn-primary ms-3" @onclick="AddTask">Добавить задачу</button>
-</div>
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+<EditForm Model="newTask" OnValidSubmit="AddTask">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <InputText @bind-Value="newTask.Title" 
+               class="form-control mb-2" 
+               placeholder="Название задачи" />
+    
+    <InputTextArea @bind-Value="newTask.Description" 
+                   class="form-control mb-2" 
+                   placeholder="Описание (необязательно)" />
+
+    <button type="submit" class="btn btn-primary ms-3">Добавить задачу</button>
+</EditForm>
 
 @if (tasks == null)
 {
@@ -42,13 +57,7 @@ else
 @code {
     private List<TaskItemDTO>? tasks;
     private TaskItemDTO newTask = new();
-
-    private async Task OnCompletedChanged(ChangeEventArgs e, TaskItemDTO task)
-    {
-        task.IsCompleted = (bool)e.Value;
-        await UpdateTask(task);
-    }
-
+    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -57,30 +66,55 @@ else
 
     private async Task LoadTasks()
     {
-        tasks = await ApiService.GetTasksAsync();
+        try
+        {
+            errorMessage = null;
+            tasks = await ApiService.GetTasksAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
     }
 
     private async Task AddTask()
     {
-        if (!string.IsNullOrWhiteSpace(newTask.Title))
-        {
-            await ApiService.AddTaskAsync(newTask);
-            newTask = new TaskItemDTO();
-            await LoadTasks();
-        }
+        await ApiService.AddTaskAsync(newTask);
+        newTask = new TaskItemDTO();
+        await LoadTasks();
     }
 
     private async Task UpdateTask(TaskItemDTO task)
     {
-        await ApiService.UpdateTaskAsync(task);
-        await LoadTasks();
+        try
+        {
+            errorMessage = null;
+            await ApiService.UpdateTaskAsync(task);
+            await LoadTasks();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
     }
 
     private async Task DeleteTask(int id)
     {
-        await ApiService.DeleteTaskAsync(id);
-        await LoadTasks();
+        try
+        {
+            errorMessage = null;
+            await ApiService.DeleteTaskAsync(id);
+            await LoadTasks();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private async Task OnCompletedChanged(ChangeEventArgs e, TaskItemDTO task)
+    {
+        task.IsCompleted = (bool)e.Value;
+        await UpdateTask(task);
     }
 }
-
-

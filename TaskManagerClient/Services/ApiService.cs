@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Json;
+﻿using System.Net.Http;
+using System.Net.Http.Json;
 using System.Text.Json;
 using TaskManagerClient.Models;
 using TaskManagerClient.Shared;
@@ -12,28 +13,57 @@ namespace TaskManagerClient.Services
         public ApiService(HttpClient http)
         {
             _http = http;
-            _http.BaseAddress = new Uri("https://localhost:7045"); 
+            _http.BaseAddress = new Uri("https://localhost:7045");
         }
 
         public async Task<List<TaskItemDTO>> GetTasksAsync()
         {
-            var tasks = await _http.GetFromJsonAsync<List<TaskItemDTO>>("/api/task");
+            var response = await _http.GetAsync("api/task");
+            await HandleErrorResponseAsync(response);
+
+            var tasks = await response.Content.ReadFromJsonAsync<List<TaskItemDTO>>();
             return tasks ?? new List<TaskItemDTO>();
         }
 
         public async Task AddTaskAsync(TaskItemDTO task)
         {
-            await _http.PostAsJsonAsync("/api/task", task);
+            var response = await _http.PostAsJsonAsync("api/task", task);
+            await HandleErrorResponseAsync(response);
         }
 
         public async Task DeleteTaskAsync(int id)
         {
-            await _http.DeleteAsync($"/api/task/{id}");
+            var response = await _http.DeleteAsync($"api/task/{id}");
+            await HandleErrorResponseAsync(response);
         }
 
         public async Task UpdateTaskAsync(TaskItemDTO task)
         {
-            await _http.PutAsJsonAsync($"/api/task/{task.Id}", task);
+            var response = await _http.PutAsJsonAsync($"api/task/{task.Id}", task);
+            await HandleErrorResponseAsync(response);
+        }
+
+        // ⬇️ Общий обработчик ошибок
+        private async Task HandleErrorResponseAsync(HttpResponseMessage response)
+        {
+            if (!response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+
+                try
+                {
+                    var problem = JsonSerializer.Deserialize<ProblemDetails>(content, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
+                    throw new Exception(problem?.Title ?? "Произошла ошибка при запросе к API.");
+                }
+                catch (JsonException)
+                {
+                    throw new Exception("Ошибка при обработке ответа сервера.");
+                }
+            }
         }
     }
 }
