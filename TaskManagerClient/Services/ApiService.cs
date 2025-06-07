@@ -13,7 +13,7 @@ namespace TaskManagerClient.Services
         public ApiService(HttpClient http)
         {
             _http = http;
-            _http.BaseAddress = new Uri("https://localhost:7045");
+            _http.BaseAddress = new Uri("https://taskmanagerapi-lnfc.onrender.com/");
         }
 
         public async Task<List<TaskItemDTO>> GetTasksAsync()
